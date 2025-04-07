@@ -554,7 +554,131 @@ class DriveDocumentUploadView(BaseGoogleDriveView):
             'upload_url': request.build_absolute_uri(),
             'user_email': self.user_email
         })
+@method_decorator(csrf_exempt, name='dispatch')
+class UploadToFolderView(BaseGoogleDriveView):
+    """Handle file upload to a folder with matching name"""
     
+    def _get_or_create_folder(self, service, folder_name):
+        """Get or create a folder with the specified name"""
+        try:
+            # Search for existing folder
+            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            results = service.files().list(
+                q=query,
+                spaces='drive',
+                fields="files(id, name)"
+            ).execute()
+            
+            files = results.get('files', [])
+            
+            # Return existing folder if found
+            if files:
+                return files[0]['id']
+            
+            # Create new folder if not found
+            folder_metadata = {
+                'name': folder_name,
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
+            
+            folder = service.files().create(
+                body=folder_metadata,
+                fields='id'
+            ).execute()
+            
+            return folder.get('id')
+            
+        except Exception as e:
+            logger.error(f"Folder operation error: {str(e)}")
+            return None
+
+    def post(self, request):
+        if not self.credentials:
+            return JsonResponse({
+                'error': 'Authentication required',
+                'redirect_url': '/drive/auth/'
+            }, status=401)
+
+        try:
+            service = GoogleDriveAuth.get_service(self.credentials)
+            
+            if 'file' not in request.FILES:
+                return JsonResponse({
+                    'error': 'No file provided'
+                }, status=400)
+            
+            uploaded_file = request.FILES['file']
+            folder_name = request.POST.get('folder_name', uploaded_file.name.split('.')[0])
+            
+            # Get or create folder
+            folder_id = self._get_or_create_folder(service, folder_name)
+            if not folder_id:
+                return JsonResponse({
+                    'error': 'Could not create or find destination folder'
+                }, status=500)
+            
+            # Prepare file metadata
+            file_metadata = {
+                'name': uploaded_file.name,
+                'parents': [folder_id]
+            }
+            
+            # Create file in memory buffer
+            media = MediaFileUpload(
+                BytesIO(uploaded_file.read()),
+                mimetype=uploaded_file.content_type,
+                resumable=True
+            )
+            
+            # Upload file to Google Drive
+            file = service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id, name, webViewLink, mimeType, parents',
+            ).execute()
+            
+            return JsonResponse({
+                'message': 'File uploaded successfully',
+                'file_id': file.get('id'),
+                'file_name': file.get('name'),
+                'folder_id': folder_id,
+                'folder_name': folder_name,
+                'view_link': file.get('webViewLink'),
+                'mime_type': file.get('mimeType'),
+                'owner_email': self.user_email
+            })
+            
+        except HttpError as e:
+            logger.error(f"Google API error: {str(e)}")
+            return JsonResponse({
+                'error': 'Google Drive API error',
+                'details': str(e)
+            }, status=500)
+            
+        except Exception as e:
+            logger.error(f"Upload error: {str(e)}")
+            return JsonResponse({
+                'error': 'Upload failed',
+                'details': str(e)
+            }, status=500)
+
+    def get(self, request):
+        """Handle GET requests - show upload information"""
+        if not self.credentials:
+            return JsonResponse({
+                'error': 'Authentication required',
+                'redirect_url': '/drive/auth/'
+            }, status=401)
+            
+        return JsonResponse({
+            'message': 'Please POST a file to upload',
+            'required_fields': {
+                'file': 'The file to upload',
+                'folder_name': '(Optional) The name of the folder to upload to. Defaults to file name without extension'
+            },
+            'upload_url': request.build_absolute_uri(),
+            'user_email': self.user_email
+        })
 
 
 

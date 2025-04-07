@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security settings
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'noticeably-fleet-seahorse.ngrok-free.app']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'hedgehog-enjoyed-evidently.ngrok-free.app']
 
 # Application definition
 INSTALLED_APPS = [
@@ -84,7 +84,7 @@ SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_TRUSTED_ORIGINS = [
-    'https://noticeably-fleet-seahorse.ngrok-free.app'
+    'https://hedgehog-enjoyed-evidently.ngrok-free.app'
 ]
 
 # Authentication Settings
@@ -118,6 +118,17 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_CLIENT_SECRETS_FILE = os.path.join(BASE_DIR, 'client_secret.json')
 
+# Gmail specific scopes
+GMAIL_SCOPES = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.compose',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'openid'
+]
+
 # Google Drive specific scopes
 DRIVE_SCOPES = [
     'https://www.googleapis.com/auth/drive',
@@ -127,20 +138,13 @@ DRIVE_SCOPES = [
 
 # Combined scopes for Gmail and Drive
 GOOGLE_SCOPES = [
-    *DRIVE_SCOPES,
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.send',
-    'https://www.googleapis.com/auth/gmail.compose',
-    'openid'
+    *GMAIL_SCOPES,
+    *DRIVE_SCOPES
 ]
 
 # Redirect URIs
-GOOGLE_REDIRECT_URI = 'https://noticeably-fleet-seahorse.ngrok-free.app/gmail/oauth2callback/'
-DRIVE_REDIRECT_URI = 'https://noticeably-fleet-seahorse.ngrok-free.app/drive/oauth2callback/'
+GMAIL_REDIRECT_URI = 'https://hedgehog-enjoyed-evidently.ngrok-free.app/gmail/oauth2callback/'
+DRIVE_REDIRECT_URI = 'https://hedgehog-enjoyed-evidently.ngrok-free.app/drive/oauth2callback/'
 
 # Gmail specific settings
 GMAIL_SCOPES = [
@@ -176,13 +180,13 @@ LOGOUT_REDIRECT_URL = '/'
 
 # Database Settings
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv('POSTGRES_DB'),
-        "USER": os.getenv('POSTGRES_USER'),
-        "PASSWORD": os.getenv('POSTGRES_PASSWORD'),
-        "HOST": os.getenv('POSTGRES_HOST'),
-        "PORT": os.getenv('POSTGRES_PORT'),
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'base',
+        'USER': 'postgres',
+        'PASSWORD': '12345678',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -249,4 +253,73 @@ STATIC_URL = 'static/'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Set DEBUG to True to see detailed error messages
+DEBUG = True
+
+# Add logging configuration to see errors in console
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
+# Make sure ALLOWED_HOSTS includes your development server
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'hedgehog-enjoyed-evidently.ngrok-free.app']
+
+# Ensure INSTALLED_APPS has all required apps
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'django.contrib.sites',
+    
+    # Third party apps
+    'rest_framework',
+    'rest_framework.authtoken',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'oauth2_provider',
+    'corsheaders',
+    
+    # Local apps
+    'user',
+    'documentation',
+    'drive',
+    'gmail',
+]
+
+# Ensure database settings are correct
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'base',
+        'USER': 'postgres',
+        'PASSWORD': '12345678',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
